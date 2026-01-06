@@ -89,21 +89,23 @@
 
 ## 4. Dashboard Screen Development
 ### 4.1 Dashboard Layout & Structure
-- [ ] Create Dashboard screen component with responsive container
+- [ ] Create Dashboard screen component with free-form canvas container
 - [ ] Implement customizable background (image/video support)
 - [ ] Create background selector/manager with aspect ratio handling
 - [ ] Add navigation button to Settings screen (responsive positioning)
-- [ ] Implement responsive widget grid/layout system
+- [ ] Implement free-form widget positioning system (absolute positioning)
 - [ ] Handle background scaling for different screen sizes and orientations
 
-### 4.2 Widget System Core
-- [ ] Design widget data structure and interface (include size/position metadata)
-- [ ] Create responsive widget container component
-- [ ] Implement drag-and-drop for widget positioning (touch-friendly for all screen sizes)
-- [ ] Create widget renderer that displays configured widgets
-- [ ] Implement widget state management (using Context/useState)
-- [ ] Add widget resize handles (pinch-to-resize or corner handles)
-- [ ] Implement snap-to-grid system for consistent positioning
+### 4.2 Widget System Core (Free-Form Layout)
+- [ ] Design widget data structure with absolute x,y position and size
+- [ ] Create draggable widget container component with PanResponder
+- [ ] Implement drag-and-drop for free widget positioning (touch-friendly)
+- [ ] Create widget renderer that displays widgets at absolute positions
+- [ ] Implement widget state management using Context/useState
+- [ ] Add widget resize handles (pinch-to-resize or corner drag handles)
+- [ ] Implement snap-to-grid (8px) system when dragging ends
+- [ ] Handle widget boundary constraints (keep within screen bounds)
+- [ ] Allow widget overlap (z-index management)
 
 ### 4.3 Calendar Widget
 - [ ] Create responsive Calendar widget component
