@@ -24,15 +24,17 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
   const { updateWidgetPosition, selectWidget, bringToFront } = useWidgets();
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const [currentPosition, setCurrentPosition] = useState(widget.position);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   const dragStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
-
-  // Update position when widget prop changes (after snapping)
+  const widgetRef = useRef(widget);
+  
+  // Keep widgetRef up to date
   useEffect(() => {
-    setCurrentPosition(widget.position);
-  }, [widget.position]);
+    widgetRef.current = widget;
+  }, [widget]);
+
 
   // Drag PanResponder
   const dragPanResponder = useRef(
@@ -44,39 +46,42 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
       },
       
       onPanResponderGrant: () => {
+        // Use widgetRef to get the LATEST widget data (not stale closure)
+        const currentWidget = widgetRef.current;
         dragStartRef.current = {
-          x: currentPosition.x,
-          y: currentPosition.y,
-          width: currentPosition.width,
-          height: currentPosition.height,
+          x: currentWidget.position.x,
+          y: currentWidget.position.y,
+          width: currentWidget.position.width,
+          height: currentWidget.position.height,
         };
         
+        setDragOffset({ x: 0, y: 0 });
         setIsDragging(true);
-        selectWidget(widget.id);
-        bringToFront(widget.id);
+        selectWidget(currentWidget.id);
+        bringToFront(currentWidget.id);
       },
       
       onPanResponderMove: (_, gestureState: PanResponderGestureState) => {
-        const newX = dragStartRef.current.x + gestureState.dx;
-        const newY = dragStartRef.current.y + gestureState.dy;
-        
-        setCurrentPosition({
-          ...currentPosition,
-          x: newX,
-          y: newY,
+        // Update drag offset for visual feedback
+        setDragOffset({
+          x: gestureState.dx,
+          y: gestureState.dy,
         });
       },
       
       onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
         setIsDragging(false);
+        setDragOffset({ x: 0, y: 0 });
         
         // Calculate final position from gesture
         const finalX = dragStartRef.current.x + gestureState.dx;
         const finalY = dragStartRef.current.y + gestureState.dy;
         
+        const currentWidget = widgetRef.current;
+        
         // Update position (Context will handle snapping and constraints)
-        updateWidgetPosition(widget.id, {
-          ...currentPosition,
+        updateWidgetPosition(currentWidget.id, {
+          ...currentWidget.position,
           x: finalX,
           y: finalY,
         });
@@ -92,24 +97,21 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
       
       onPanResponderGrant: (evt) => {
         evt.stopPropagation();
+        // Use widgetRef to get the LATEST widget data (not stale closure)
+        const currentWidget = widgetRef.current;
         resizeStartRef.current = {
-          x: currentPosition.x,
-          y: currentPosition.y,
-          width: currentPosition.width,
-          height: currentPosition.height,
+          x: currentWidget.position.x,
+          y: currentWidget.position.y,
+          width: currentWidget.position.width,
+          height: currentWidget.position.height,
         };
+        
         setIsResizing(true);
       },
       
       onPanResponderMove: (_, gestureState: PanResponderGestureState) => {
-        const newWidth = Math.max(100, resizeStartRef.current.width + gestureState.dx);
-        const newHeight = Math.max(100, resizeStartRef.current.height + gestureState.dy);
-        
-        setCurrentPosition({
-          ...currentPosition,
-          width: newWidth,
-          height: newHeight,
-        });
+        // Resize offset will be handled in render
+        // No need to set state here for better performance
       },
       
       onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
@@ -119,9 +121,11 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
         const finalWidth = Math.max(100, resizeStartRef.current.width + gestureState.dx);
         const finalHeight = Math.max(100, resizeStartRef.current.height + gestureState.dy);
         
+        const currentWidget = widgetRef.current;
+        
         // Update position (Context will handle snapping and constraints)
-        updateWidgetPosition(widget.id, {
-          ...currentPosition,
+        updateWidgetPosition(currentWidget.id, {
+          ...currentWidget.position,
           width: finalWidth,
           height: finalHeight,
         });
@@ -138,16 +142,20 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
     }
   };
 
+  // Calculate display position: widget.position + drag offset
+  const displayX = widget.position.x + (isDragging ? dragOffset.x : 0);
+  const displayY = widget.position.y + (isDragging ? dragOffset.y : 0);
+  
   return (
     <View
       {...dragPanResponder.panHandlers}
       style={[
         styles.container,
         {
-          left: currentPosition.x,
-          top: currentPosition.y,
-          width: currentPosition.width,
-          height: currentPosition.height,
+          left: displayX,
+          top: displayY,
+          width: widget.position.width,
+          height: widget.position.height,
           zIndex: widget.zIndex || 1,
           transform: [{ scale: isDragging || isResizing ? 1.05 : 1 }],
         },
