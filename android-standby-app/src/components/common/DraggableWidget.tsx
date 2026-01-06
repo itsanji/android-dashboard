@@ -67,11 +67,19 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
         });
       },
       
-      onPanResponderRelease: () => {
+      onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
         setIsDragging(false);
         
+        // Calculate final position from gesture
+        const finalX = dragStartRef.current.x + gestureState.dx;
+        const finalY = dragStartRef.current.y + gestureState.dy;
+        
         // Update position (Context will handle snapping and constraints)
-        updateWidgetPosition(widget.id, currentPosition);
+        updateWidgetPosition(widget.id, {
+          ...currentPosition,
+          x: finalX,
+          y: finalY,
+        });
       },
     })
   ).current;
@@ -104,11 +112,19 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
         });
       },
       
-      onPanResponderRelease: () => {
+      onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
         setIsResizing(false);
         
+        // Calculate final size from gesture
+        const finalWidth = Math.max(100, resizeStartRef.current.width + gestureState.dx);
+        const finalHeight = Math.max(100, resizeStartRef.current.height + gestureState.dy);
+        
         // Update position (Context will handle snapping and constraints)
-        updateWidgetPosition(widget.id, currentPosition);
+        updateWidgetPosition(widget.id, {
+          ...currentPosition,
+          width: finalWidth,
+          height: finalHeight,
+        });
       },
     })
   ).current;
