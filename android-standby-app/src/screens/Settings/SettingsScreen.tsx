@@ -6,6 +6,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { Button, Card, IconButton } from '../../components/ui';
 import { useScreenDimensions } from '../../hooks/useScreenDimensions';
+import { useWidgets } from '../../context/WidgetContext';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { WidgetType } from '../../types';
@@ -28,6 +29,7 @@ const AVAILABLE_WIDGETS = [
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { screenSize, isTablet } = useScreenDimensions();
+  const { widgets, addWidget, removeWidget } = useWidgets();
   const [activeTab, setActiveTab] = useState<'widgets' | 'added'>('widgets');
 
   const handleBackPress = () => {
@@ -35,8 +37,13 @@ export const SettingsScreen: React.FC = () => {
   };
 
   const handleAddWidget = (widgetType: WidgetType) => {
-    console.log('Add widget:', widgetType);
-    // TODO: Implement widget addition logic
+    addWidget(widgetType);
+    // Show success feedback
+    setActiveTab('added');
+  };
+
+  const handleRemoveWidget = (widgetId: string) => {
+    removeWidget(widgetId);
   };
 
   return (
@@ -108,24 +115,53 @@ export const SettingsScreen: React.FC = () => {
             </>
           ) : (
             <>
-              <Text style={styles.sectionTitle}>📋 Your Widgets</Text>
+              <Text style={styles.sectionTitle}>📋 Your Widgets ({widgets.length})</Text>
               <Text style={styles.sectionDescription}>
                 Manage position, content, and style of added widgets
               </Text>
 
-              <Card style={styles.emptyCard}>
-                <Text style={styles.emptyIcon}>📦</Text>
-                <Text style={styles.emptyTitle}>No Widgets Added Yet</Text>
-                <Text style={styles.emptyText}>
-                  Go to Available Widgets tab to add widgets to your dashboard
-                </Text>
-                <Button
-                  title="Browse Widgets"
-                  variant="outline"
-                  onPress={() => setActiveTab('widgets')}
-                  style={styles.emptyButton}
-                />
-              </Card>
+              {widgets.length === 0 ? (
+                <Card style={styles.emptyCard}>
+                  <Text style={styles.emptyIcon}>📦</Text>
+                  <Text style={styles.emptyTitle}>No Widgets Added Yet</Text>
+                  <Text style={styles.emptyText}>
+                    Go to Available Widgets tab to add widgets to your dashboard
+                  </Text>
+                  <Button
+                    title="Browse Widgets"
+                    variant="outline"
+                    onPress={() => setActiveTab('widgets')}
+                    style={styles.emptyButton}
+                  />
+                </Card>
+              ) : (
+                widgets.map((widget, index) => (
+                  <Card key={widget.id} style={styles.widgetCard}>
+                    <View style={styles.widgetRow}>
+                      <View style={styles.widgetInfo}>
+                        <Text style={styles.widgetIcon}>
+                          {AVAILABLE_WIDGETS.find((w) => w.type === widget.type)?.icon}
+                        </Text>
+                        <View style={styles.widgetDetails}>
+                          <Text style={styles.widgetName}>
+                            {AVAILABLE_WIDGETS.find((w) => w.type === widget.type)?.name} #{index + 1}
+                          </Text>
+                          <Text style={styles.widgetDescription}>
+                            {widget.position.width.toFixed(0)}x{widget.position.height.toFixed(0)} • 
+                            z-index: {widget.zIndex}
+                          </Text>
+                        </View>
+                      </View>
+                      <Button
+                        title="Remove"
+                        size="small"
+                        variant="outline"
+                        onPress={() => handleRemoveWidget(widget.id)}
+                      />
+                    </View>
+                  </Card>
+                ))
+              )}
             </>
           )}
 
