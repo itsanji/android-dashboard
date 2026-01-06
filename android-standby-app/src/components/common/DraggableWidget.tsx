@@ -25,6 +25,7 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [resizeOffset, setResizeOffset] = useState({ width: 0, height: 0 });
   
   const dragStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
@@ -42,6 +43,7 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
       onStartShouldSetPanResponder: () => !isResizing,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         if (isResizing) return false;
+        // Only start drag if moved more than threshold
         return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
       },
       
@@ -70,8 +72,17 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
       },
       
       onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
+        const wasDragging = isDragging;
         setIsDragging(false);
         setDragOffset({ x: 0, y: 0 });
+        
+        // If didn't move much, treat as tap
+        const moved = Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
+        if (!moved && !wasDragging) {
+          // Handle tap
+          selectWidget(isSelected ? null : widget.id);
+          return;
+        }
         
         // Calculate final position from gesture
         const finalX = dragStartRef.current.x + gestureState.dx;
@@ -92,8 +103,10 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
   // Resize PanResponder
   const resizePanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => isSelected,
-      onMoveShouldSetPanResponder: () => isSelected,
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
       
       onPanResponderGrant: (evt) => {
         evt.stopPropagation();
@@ -106,16 +119,24 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
           height: currentWidget.position.height,
         };
         
+        setResizeOffset({ width: 0, height: 0 });
         setIsResizing(true);
       },
       
       onPanResponderMove: (_, gestureState: PanResponderGestureState) => {
-        // Resize offset will be handled in render
-        // No need to set state here for better performance
+        // Update resize offset for visual feedback
+        const newWidth = Math.max(100, resizeStartRef.current.width + gestureState.dx);
+        const newHeight = Math.max(100, resizeStartRef.current.height + gestureState.dy);
+        
+        setResizeOffset({
+          width: newWidth - resizeStartRef.current.width,
+          height: newHeight - resizeStartRef.current.height,
+        });
       },
       
       onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
         setIsResizing(false);
+        setResizeOffset({ width: 0, height: 0 });
         
         // Calculate final size from gesture
         const finalWidth = Math.max(100, resizeStartRef.current.width + gestureState.dx);
@@ -133,37 +154,29 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
     })
   ).current;
 
-  const handleTap = () => {
-    if (!isDragging && !isResizing) {
-      selectWidget(isSelected ? null : widget.id);
-      if (!isSelected) {
-        bringToFront(widget.id);
-      }
-    }
-  };
 
-  // Calculate display position: widget.position + drag offset
+  // Calculate display position and size
   const displayX = widget.position.x + (isDragging ? dragOffset.x : 0);
   const displayY = widget.position.y + (isDragging ? dragOffset.y : 0);
+  const displayWidth = widget.position.width + (isResizing ? resizeOffset.width : 0);
+  const displayHeight = widget.position.height + (isResizing ? resizeOffset.height : 0);
   
   return (
     <View
-      {...dragPanResponder.panHandlers}
       style={[
         styles.container,
         {
           left: displayX,
           top: displayY,
-          width: widget.position.width,
-          height: widget.position.height,
+          width: displayWidth,
+          height: displayHeight,
           zIndex: widget.zIndex || 1,
           transform: [{ scale: isDragging || isResizing ? 1.05 : 1 }],
         },
       ]}
     >
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={handleTap}
+      <View
+        {...dragPanResponder.panHandlers}
         style={[
           styles.content,
           {
@@ -177,14 +190,14 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
         ]}
       >
         {children}
-        
-        {/* Resize Handle (bottom-right corner) */}
-        {isSelected && !isDragging && (
-          <View {...resizePanResponder.panHandlers} style={styles.resizeHandle}>
-            <View style={styles.resizeHandleIcon} />
-          </View>
-        )}
-      </TouchableOpacity>
+      </View>
+      
+      {/* Resize Handle (bottom-right corner) - Outside content to capture events independently */}
+      {isSelected && !isDragging && (
+        <View {...resizePanResponder.panHandlers} style={styles.resizeHandle}>
+          <View style={styles.resizeHandleIcon} />
+        </View>
+      )}
     </View>
   );
 };
@@ -217,20 +230,27 @@ const styles = StyleSheet.create({
   },
   resizeHandle: {
     position: 'absolute',
-    right: -4,
-    bottom: -4,
-    width: TOUCH_TARGET_SIZE / 2,
-    height: TOUCH_TARGET_SIZE / 2,
+    right: -16,
+    bottom: -16,
+    width: TOUCH_TARGET_SIZE,
+    height: TOUCH_TARGET_SIZE,
     backgroundColor: COLORS.primary,
-    borderRadius: (TOUCH_TARGET_SIZE / 2) / 2,
+    borderRadius: TOUCH_TARGET_SIZE / 2,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: COLORS.onPrimary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
   },
   resizeHandleIcon: {
-    width: 12,
-    height: 12,
-    borderRightWidth: 2,
-    borderBottomWidth: 2,
+    width: 16,
+    height: 16,
+    borderRightWidth: 3,
+    borderBottomWidth: 3,
     borderColor: COLORS.onPrimary,
   },
 });
