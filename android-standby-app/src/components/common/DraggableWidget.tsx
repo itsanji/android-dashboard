@@ -9,7 +9,6 @@ import {
 import { Widget } from '../../types';
 import { COLORS, TOUCH_TARGET_SIZE } from '../../constants/theme';
 import { useWidgets } from '../../context/WidgetContext';
-import { snapToGrid } from '../../utils/layout';
 
 interface DraggableWidgetProps {
   widget: Widget;
@@ -71,15 +70,8 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
       onPanResponderRelease: () => {
         setIsDragging(false);
         
-        // Snap to grid and update
-        const snappedX = snapToGrid(currentPosition.x);
-        const snappedY = snapToGrid(currentPosition.y);
-        
-        updateWidgetPosition(widget.id, {
-          ...currentPosition,
-          x: snappedX,
-          y: snappedY,
-        });
+        // Update position (Context will handle snapping and constraints)
+        updateWidgetPosition(widget.id, currentPosition);
       },
     })
   ).current;
@@ -115,15 +107,8 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
       onPanResponderRelease: () => {
         setIsResizing(false);
         
-        // Snap size to grid
-        const snappedWidth = snapToGrid(currentPosition.width);
-        const snappedHeight = snapToGrid(currentPosition.height);
-        
-        updateWidgetPosition(widget.id, {
-          ...currentPosition,
-          width: Math.max(100, snappedWidth),
-          height: Math.max(100, snappedHeight),
-        });
+        // Update position (Context will handle snapping and constraints)
+        updateWidgetPosition(widget.id, currentPosition);
       },
     })
   ).current;
