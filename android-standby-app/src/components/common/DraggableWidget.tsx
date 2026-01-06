@@ -1,15 +1,15 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
   PanResponder,
-  Animated,
   TouchableOpacity,
   PanResponderGestureState,
 } from 'react-native';
 import { Widget } from '../../types';
 import { COLORS, TOUCH_TARGET_SIZE } from '../../constants/theme';
 import { useWidgets } from '../../context/WidgetContext';
+import { snapToGrid } from '../../utils/layout';
 
 interface DraggableWidgetProps {
   widget: Widget;
@@ -24,69 +24,112 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
 }) => {
   const { updateWidgetPosition, selectWidget, bringToFront } = useWidgets();
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [currentPosition, setCurrentPosition] = useState(widget.position);
   
-  const pan = useRef(new Animated.ValueXY({ x: widget.position.x, y: widget.position.y })).current;
-  const dragStartPosition = useRef({ x: 0, y: 0 });
+  const dragStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
+  const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
-  const panResponder = useRef(
+  // Update position when widget prop changes (after snapping)
+  useEffect(() => {
+    setCurrentPosition(widget.position);
+  }, [widget.position]);
+
+  // Drag PanResponder
+  const dragPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => !isResizing,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only start dragging if moved more than 5 pixels
+        if (isResizing) return false;
         return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
       },
       
       onPanResponderGrant: () => {
-        // Save starting position
-        dragStartPosition.current = {
-          x: widget.position.x,
-          y: widget.position.y,
+        dragStartRef.current = {
+          x: currentPosition.x,
+          y: currentPosition.y,
+          width: currentPosition.width,
+          height: currentPosition.height,
         };
-        
-        // Set the offset to current position
-        pan.setOffset({
-          x: widget.position.x,
-          y: widget.position.y,
-        });
-        pan.setValue({ x: 0, y: 0 });
         
         setIsDragging(true);
         selectWidget(widget.id);
         bringToFront(widget.id);
       },
       
-      onPanResponderMove: Animated.event(
-        [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false }
-      ),
-      
-      onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
-        pan.flattenOffset();
-        setIsDragging(false);
+      onPanResponderMove: (_, gestureState: PanResponderGestureState) => {
+        const newX = dragStartRef.current.x + gestureState.dx;
+        const newY = dragStartRef.current.y + gestureState.dy;
         
-        // Calculate final position
-        const newX = dragStartPosition.current.x + gestureState.dx;
-        const newY = dragStartPosition.current.y + gestureState.dy;
-        
-        // Update widget position (will be snapped to grid in context)
-        updateWidgetPosition(widget.id, {
-          ...widget.position,
+        setCurrentPosition({
+          ...currentPosition,
           x: newX,
           y: newY,
         });
+      },
+      
+      onPanResponderRelease: () => {
+        setIsDragging(false);
         
-        // Animate to snapped position
-        Animated.spring(pan, {
-          toValue: { x: newX, y: newY },
-          useNativeDriver: false,
-          friction: 7,
-        }).start();
+        // Snap to grid and update
+        const snappedX = snapToGrid(currentPosition.x);
+        const snappedY = snapToGrid(currentPosition.y);
+        
+        updateWidgetPosition(widget.id, {
+          ...currentPosition,
+          x: snappedX,
+          y: snappedY,
+        });
+      },
+    })
+  ).current;
+
+  // Resize PanResponder
+  const resizePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => isSelected,
+      onMoveShouldSetPanResponder: () => isSelected,
+      
+      onPanResponderGrant: (evt) => {
+        evt.stopPropagation();
+        resizeStartRef.current = {
+          x: currentPosition.x,
+          y: currentPosition.y,
+          width: currentPosition.width,
+          height: currentPosition.height,
+        };
+        setIsResizing(true);
+      },
+      
+      onPanResponderMove: (_, gestureState: PanResponderGestureState) => {
+        const newWidth = Math.max(100, resizeStartRef.current.width + gestureState.dx);
+        const newHeight = Math.max(100, resizeStartRef.current.height + gestureState.dy);
+        
+        setCurrentPosition({
+          ...currentPosition,
+          width: newWidth,
+          height: newHeight,
+        });
+      },
+      
+      onPanResponderRelease: () => {
+        setIsResizing(false);
+        
+        // Snap size to grid
+        const snappedWidth = snapToGrid(currentPosition.width);
+        const snappedHeight = snapToGrid(currentPosition.height);
+        
+        updateWidgetPosition(widget.id, {
+          ...currentPosition,
+          width: Math.max(100, snappedWidth),
+          height: Math.max(100, snappedHeight),
+        });
       },
     })
   ).current;
 
   const handleTap = () => {
-    if (!isDragging) {
+    if (!isDragging && !isResizing) {
       selectWidget(isSelected ? null : widget.id);
       if (!isSelected) {
         bringToFront(widget.id);
@@ -95,17 +138,17 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
   };
 
   return (
-    <Animated.View
-      {...panResponder.panHandlers}
+    <View
+      {...dragPanResponder.panHandlers}
       style={[
         styles.container,
         {
-          left: pan.x,
-          top: pan.y,
-          width: widget.position.width,
-          height: widget.position.height,
+          left: currentPosition.x,
+          top: currentPosition.y,
+          width: currentPosition.width,
+          height: currentPosition.height,
           zIndex: widget.zIndex || 1,
-          transform: [{ scale: isDragging ? 1.05 : 1 }],
+          transform: [{ scale: isDragging || isResizing ? 1.05 : 1 }],
         },
       ]}
     >
@@ -121,19 +164,19 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
             opacity: widget.style?.opacity !== undefined ? widget.style.opacity : 1,
           },
           isSelected && styles.selected,
-          isDragging && styles.dragging,
+          (isDragging || isResizing) && styles.dragging,
         ]}
       >
         {children}
         
         {/* Resize Handle (bottom-right corner) */}
         {isSelected && !isDragging && (
-          <View style={styles.resizeHandle}>
+          <View {...resizePanResponder.panHandlers} style={styles.resizeHandle}>
             <View style={styles.resizeHandleIcon} />
           </View>
         )}
       </TouchableOpacity>
-    </Animated.View>
+    </View>
   );
 };
 
