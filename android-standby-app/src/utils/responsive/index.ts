@@ -47,6 +47,17 @@ export const isFoldable = (width: number, height: number): boolean => {
   return aspectRatio > 2.5 || (width > 700 && height > 700);
 };
 
+export type FoldMode = 'folded' | 'unfolded' | 'normal';
+
+/**
+ * Estimate the fold state of a foldable from its dimensions
+ * (Z Flip folded: < 300dp wide, Z Fold folded: < 400dp, Z Fold unfolded: > 700dp)
+ */
+export const getFoldMode = (width: number, height: number): FoldMode => {
+  if (!isFoldable(width, height)) return 'normal';
+  return Math.min(width, height) < 400 ? 'folded' : 'unfolded';
+};
+
 /**
  * Check if screen is in portrait orientation
  */

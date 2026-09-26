@@ -27,7 +27,10 @@ export interface WidgetStyle {
 export interface BaseWidget {
   id: string;
   type: WidgetType;
+  /** Position in the currently active layout */
   position: WidgetPosition;
+  /** Saved position per screen configuration (see getLayoutKey), e.g. folded vs unfolded */
+  layouts?: Record<string, WidgetPosition>;
   style?: WidgetStyle;
   zIndex?: number;
 }

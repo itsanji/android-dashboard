@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { Widget, WidgetType, WidgetPosition, BackgroundConfig } from '../types';
 import StorageService from '../services/storage';
 import { useScreenDimensions } from '../hooks/useScreenDimensions';
-import { constrainPosition, snapWidgetToGrid } from '../utils/layout';
+import { constrainPosition, getLayoutKey, scalePosition, snapWidgetToGrid } from '../utils/layout';
 
 interface CanvasSize {
   width: number;
@@ -25,6 +25,14 @@ interface WidgetContextType {
 }
 
 const WidgetContext = createContext<WidgetContextType | undefined>(undefined);
+
+/** Set the widget's position in the active layout and remember it for that layout */
+const withPosition = (widget: Widget, position: WidgetPosition, layoutKey?: string): Widget =>
+  ({
+    ...widget,
+    position,
+    layouts: layoutKey ? { ...widget.layouts, [layoutKey]: position } : widget.layouts,
+  }) as Widget;
 
 const getDefaultConfig = (type: WidgetType): Widget['config'] => {
   switch (type) {
@@ -53,6 +61,8 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isHydrated, setIsHydrated] = useState(false);
   const screen = useScreenDimensions();
   const [canvasSize, setCanvasSizeState] = useState<CanvasSize | null>(null);
+  // Layout (fold state + orientation) the widgets' `position` currently belongs to
+  const activeLayoutRef = useRef<{ key: string; size: CanvasSize } | null>(null);
 
   // Widgets are laid out inside the canvas, which is smaller than the window
   // (safe area insets). Fall back to the window size until it is measured.
@@ -91,27 +101,37 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     loadWidgets();
   }, [loadWidgets]);
 
-  // Keep widgets inside the canvas once it is measured or resized
+  // When the canvas is measured or resized, switch every widget to its
+  // position for the current layout. Leaving a layout (e.g. unfolding or
+  // rotating) stores the positions under the old layout so they come back
+  // unchanged when returning to it.
   useEffect(() => {
-    if (!canvasSize) return;
-    setWidgets((prev) => {
-      let changed = false;
-      const next = prev.map((widget) => {
-        const constrained = constrainPosition(widget.position, canvasSize.width, canvasSize.height);
-        const p = widget.position;
-        if (
-          constrained.x === p.x &&
-          constrained.y === p.y &&
-          constrained.width === p.width &&
-          constrained.height === p.height
-        ) {
-          return widget;
+    if (!canvasSize || !isHydrated) return;
+
+    const previous = activeLayoutRef.current;
+    const key = getLayoutKey(canvasSize.width, canvasSize.height);
+    activeLayoutRef.current = { key, size: canvasSize };
+
+    setWidgets((prev) =>
+      prev.map((widget) => {
+        const layouts = { ...widget.layouts };
+        let position: WidgetPosition;
+
+        if (!previous) {
+          // First measurement after loading: use the saved layout for this screen
+          position = layouts[key] ?? widget.position;
+        } else if (previous.key !== key) {
+          layouts[previous.key] = widget.position;
+          position = layouts[key] ?? scalePosition(widget.position, previous.size, canvasSize);
+        } else {
+          // Same layout, slightly different size
+          position = widget.position;
         }
-        changed = true;
-        return { ...widget, position: constrained };
-      });
-      return changed ? next : prev;
-    });
+
+        const constrained = constrainPosition(position, canvasSize.width, canvasSize.height);
+        return withPosition({ ...widget, layouts } as Widget, constrained, key);
+      })
+    );
   }, [canvasSize, isHydrated]);
 
   // Save widgets to storage whenever they change (including becoming empty)
@@ -153,6 +173,9 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           id,
           type,
           position: constrainedPosition,
+          layouts: activeLayoutRef.current
+            ? { [activeLayoutRef.current.key]: constrainedPosition }
+            : undefined,
           zIndex: maxZIndex + 1,
           config: getDefaultConfig(type),
           style: {
@@ -181,7 +204,7 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (widget.id === id) {
             const snapped = snapWidgetToGrid(position);
             const constrained = constrainPosition(snapped, width, height);
-            return { ...widget, position: constrained };
+            return withPosition(widget, constrained, activeLayoutRef.current?.key);
           }
           return widget;
         })
