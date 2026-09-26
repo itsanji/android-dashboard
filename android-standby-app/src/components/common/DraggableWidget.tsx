@@ -1,14 +1,11 @@
-import React, { useRef, useState, useEffect } from 'react';
-import {
-  View,
-  StyleSheet,
-  PanResponder,
-  TouchableOpacity,
-  PanResponderGestureState,
-} from 'react-native';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { View, StyleSheet, PanResponder, PanResponderGestureState } from 'react-native';
 import { Widget } from '../../types';
-import { COLORS, TOUCH_TARGET_SIZE } from '../../constants/theme';
+import { COLORS, TOUCH_TARGET_SIZE, WIDGET_CONSTRAINTS } from '../../constants/theme';
 import { useWidgets } from '../../context/WidgetContext';
+
+// Movement (px) below which a gesture counts as a tap
+const TAP_THRESHOLD = 5;
 
 interface DraggableWidgetProps {
   widget: Widget;
@@ -26,141 +23,152 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
   const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [resizeOffset, setResizeOffset] = useState({ width: 0, height: 0 });
-  
+
   const dragStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
-  const widgetRef = useRef(widget);
-  
-  // Keep widgetRef up to date
-  useEffect(() => {
-    widgetRef.current = widget;
-  }, [widget]);
+  const wasSelectedRef = useRef(false);
 
+  // The PanResponders below are created once, so everything they read must
+  // come from refs to avoid stale closures.
+  const latestRef = useRef({
+    widget,
+    isSelected,
+    updateWidgetPosition,
+    selectWidget,
+    bringToFront,
+  });
+  useEffect(() => {
+    latestRef.current = { widget, isSelected, updateWidgetPosition, selectWidget, bringToFront };
+  });
 
   // Drag PanResponder
-  const dragPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => !isResizing,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        if (isResizing) return false;
-        // Only start drag if moved more than threshold
-        return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
-      },
-      
-      onPanResponderGrant: () => {
-        // Use widgetRef to get the LATEST widget data (not stale closure)
-        const currentWidget = widgetRef.current;
-        dragStartRef.current = {
-          x: currentWidget.position.x,
-          y: currentWidget.position.y,
-          width: currentWidget.position.width,
-          height: currentWidget.position.height,
-        };
-        
-        setDragOffset({ x: 0, y: 0 });
-        setIsDragging(true);
-        selectWidget(currentWidget.id);
-        bringToFront(currentWidget.id);
-      },
-      
-      onPanResponderMove: (_, gestureState: PanResponderGestureState) => {
-        // Update drag offset for visual feedback
-        setDragOffset({
-          x: gestureState.dx,
-          y: gestureState.dy,
-        });
-      },
-      
-      onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
-        const wasDragging = isDragging;
-        setIsDragging(false);
-        setDragOffset({ x: 0, y: 0 });
-        
-        // If didn't move much, treat as tap
-        const moved = Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
-        if (!moved && !wasDragging) {
-          // Handle tap
-          selectWidget(isSelected ? null : widget.id);
-          return;
-        }
-        
-        // Calculate final position from gesture
-        const finalX = dragStartRef.current.x + gestureState.dx;
-        const finalY = dragStartRef.current.y + gestureState.dy;
-        
-        const currentWidget = widgetRef.current;
-        
-        // Update position (Context will handle snapping and constraints)
-        updateWidgetPosition(currentWidget.id, {
-          ...currentWidget.position,
-          x: finalX,
-          y: finalY,
-        });
-      },
-    })
-  ).current;
+  const dragPanResponder = useMemo(
+    () =>
+      // Refs are only read inside gesture callbacks, never during render
+      // eslint-disable-next-line react-hooks/refs
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > TAP_THRESHOLD || Math.abs(gestureState.dy) > TAP_THRESHOLD,
+
+        onPanResponderGrant: () => {
+          const { widget: currentWidget, isSelected: selected } = latestRef.current;
+          dragStartRef.current = { ...currentWidget.position };
+          wasSelectedRef.current = selected;
+
+          setDragOffset({ x: 0, y: 0 });
+          setIsDragging(true);
+          latestRef.current.selectWidget(currentWidget.id);
+          latestRef.current.bringToFront(currentWidget.id);
+        },
+
+        onPanResponderMove: (_, gestureState: PanResponderGestureState) => {
+          setDragOffset({ x: gestureState.dx, y: gestureState.dy });
+        },
+
+        onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
+          setIsDragging(false);
+          setDragOffset({ x: 0, y: 0 });
+
+          const { widget: currentWidget, selectWidget: select } = latestRef.current;
+
+          // If it didn't move much, treat as a tap: toggle selection
+          const moved =
+            Math.abs(gestureState.dx) > TAP_THRESHOLD || Math.abs(gestureState.dy) > TAP_THRESHOLD;
+          if (!moved) {
+            select(wasSelectedRef.current ? null : currentWidget.id);
+            return;
+          }
+
+          // Update position (Context will handle snapping and constraints)
+          latestRef.current.updateWidgetPosition(currentWidget.id, {
+            ...currentWidget.position,
+            x: dragStartRef.current.x + gestureState.dx,
+            y: dragStartRef.current.y + gestureState.dy,
+          });
+        },
+
+        onPanResponderTerminate: () => {
+          // Gesture was taken over (e.g. by the system); discard the drag
+          setIsDragging(false);
+          setDragOffset({ x: 0, y: 0 });
+        },
+      }),
+    []
+  );
 
   // Resize PanResponder
-  const resizePanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
-      
-      onPanResponderGrant: (evt) => {
-        evt.stopPropagation();
-        // Use widgetRef to get the LATEST widget data (not stale closure)
-        const currentWidget = widgetRef.current;
-        resizeStartRef.current = {
-          x: currentWidget.position.x,
-          y: currentWidget.position.y,
-          width: currentWidget.position.width,
-          height: currentWidget.position.height,
-        };
-        
-        setResizeOffset({ width: 0, height: 0 });
-        setIsResizing(true);
-      },
-      
-      onPanResponderMove: (_, gestureState: PanResponderGestureState) => {
-        // Update resize offset for visual feedback
-        const newWidth = Math.max(100, resizeStartRef.current.width + gestureState.dx);
-        const newHeight = Math.max(100, resizeStartRef.current.height + gestureState.dy);
-        
-        setResizeOffset({
-          width: newWidth - resizeStartRef.current.width,
-          height: newHeight - resizeStartRef.current.height,
-        });
-      },
-      
-      onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
-        setIsResizing(false);
-        setResizeOffset({ width: 0, height: 0 });
-        
-        // Calculate final size from gesture
-        const finalWidth = Math.max(100, resizeStartRef.current.width + gestureState.dx);
-        const finalHeight = Math.max(100, resizeStartRef.current.height + gestureState.dy);
-        
-        const currentWidget = widgetRef.current;
-        
-        // Update position (Context will handle snapping and constraints)
-        updateWidgetPosition(currentWidget.id, {
-          ...currentWidget.position,
-          width: finalWidth,
-          height: finalHeight,
-        });
-      },
-    })
-  ).current;
+  const resizePanResponder = useMemo(
+    () =>
+      // Refs are only read inside gesture callbacks, never during render
+      // eslint-disable-next-line react-hooks/refs
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
+        onPanResponderTerminationRequest: () => false,
 
+        onPanResponderGrant: () => {
+          resizeStartRef.current = { ...latestRef.current.widget.position };
+          setResizeOffset({ width: 0, height: 0 });
+          setIsResizing(true);
+        },
+
+        onPanResponderMove: (_, gestureState: PanResponderGestureState) => {
+          const newWidth = Math.max(
+            WIDGET_CONSTRAINTS.minWidth,
+            resizeStartRef.current.width + gestureState.dx
+          );
+          const newHeight = Math.max(
+            WIDGET_CONSTRAINTS.minHeight,
+            resizeStartRef.current.height + gestureState.dy
+          );
+
+          setResizeOffset({
+            width: newWidth - resizeStartRef.current.width,
+            height: newHeight - resizeStartRef.current.height,
+          });
+        },
+
+        onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
+          setIsResizing(false);
+          setResizeOffset({ width: 0, height: 0 });
+
+          const { widget: currentWidget } = latestRef.current;
+
+          // Update position (Context will handle snapping and constraints)
+          latestRef.current.updateWidgetPosition(currentWidget.id, {
+            ...currentWidget.position,
+            width: Math.max(
+              WIDGET_CONSTRAINTS.minWidth,
+              resizeStartRef.current.width + gestureState.dx
+            ),
+            height: Math.max(
+              WIDGET_CONSTRAINTS.minHeight,
+              resizeStartRef.current.height + gestureState.dy
+            ),
+          });
+        },
+
+        onPanResponderTerminate: () => {
+          setIsResizing(false);
+          setResizeOffset({ width: 0, height: 0 });
+        },
+      }),
+    []
+  );
 
   // Calculate display position and size
-  const displayX = widget.position.x + (isDragging ? dragOffset.x : 0);
-  const displayY = widget.position.y + (isDragging ? dragOffset.y : 0);
+  // Only move visually once past the tap threshold, so taps don't jitter
+  const showDrag =
+    isDragging &&
+    (Math.abs(dragOffset.x) > TAP_THRESHOLD || Math.abs(dragOffset.y) > TAP_THRESHOLD);
+  const displayX = widget.position.x + (showDrag ? dragOffset.x : 0);
+  const displayY = widget.position.y + (showDrag ? dragOffset.y : 0);
   const displayWidth = widget.position.width + (isResizing ? resizeOffset.width : 0);
   const displayHeight = widget.position.height + (isResizing ? resizeOffset.height : 0);
-  
+
   return (
     <View
       style={[
@@ -171,7 +179,7 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
           width: displayWidth,
           height: displayHeight,
           zIndex: widget.zIndex || 1,
-          transform: [{ scale: isDragging || isResizing ? 1.05 : 1 }],
+          transform: [{ scale: showDrag || isResizing ? 1.05 : 1 }],
         },
       ]}
     >
@@ -181,19 +189,19 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
           styles.content,
           {
             backgroundColor: widget.style?.backgroundColor || COLORS.widgetBackground,
-            borderRadius: widget.style?.borderRadius || 12,
-            padding: widget.style?.padding || 12,
-            opacity: widget.style?.opacity !== undefined ? widget.style.opacity : 1,
+            borderRadius: widget.style?.borderRadius ?? 12,
+            padding: widget.style?.padding ?? 12,
+            opacity: widget.style?.opacity ?? 1,
           },
           isSelected && styles.selected,
-          (isDragging || isResizing) && styles.dragging,
+          (showDrag || isResizing) && styles.dragging,
         ]}
       >
         {children}
       </View>
-      
+
       {/* Resize Handle (bottom-right corner) - Outside content to capture events independently */}
-      {isSelected && !isDragging && (
+      {isSelected && !showDrag && (
         <View {...resizePanResponder.panHandlers} style={styles.resizeHandle}>
           <View style={styles.resizeHandleIcon} />
         </View>
@@ -254,4 +262,3 @@ const styles = StyleSheet.create({
     borderColor: COLORS.onPrimary,
   },
 });
-

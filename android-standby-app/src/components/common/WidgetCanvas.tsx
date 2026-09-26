@@ -1,17 +1,22 @@
 import React from 'react';
-import { View, StyleSheet, ImageBackground, Dimensions } from 'react-native';
+import { View, StyleSheet, ImageBackground, LayoutChangeEvent } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { DraggableWidget } from './DraggableWidget';
 import { useWidgets } from '../../context/WidgetContext';
 import { COLORS } from '../../constants/theme';
+import { Widget } from '../../types';
 
 interface WidgetCanvasProps {
-  renderWidget: (widget: any) => React.ReactNode;
+  renderWidget: (widget: Widget) => React.ReactNode;
 }
 
 export const WidgetCanvas: React.FC<WidgetCanvasProps> = ({ renderWidget }) => {
-  const { widgets, selectedWidgetId, background } = useWidgets();
-  const { width, height } = Dimensions.get('window');
+  const { widgets, selectedWidgetId, background, selectWidget, setCanvasSize } = useWidgets();
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setCanvasSize({ width, height });
+  };
 
   const renderBackground = () => {
     switch (background.type) {
@@ -28,7 +33,7 @@ export const WidgetCanvas: React.FC<WidgetCanvasProps> = ({ renderWidget }) => {
           );
         }
         break;
-        
+
       case 'video':
         if (background.uri) {
           return (
@@ -46,21 +51,18 @@ export const WidgetCanvas: React.FC<WidgetCanvasProps> = ({ renderWidget }) => {
           );
         }
         break;
-        
+
       case 'color':
       default:
         return (
           <View
-            style={[
-              styles.background,
-              { backgroundColor: background.color || COLORS.background },
-            ]}
+            style={[styles.background, { backgroundColor: background.color || COLORS.background }]}
           >
             {renderWidgets()}
           </View>
         );
     }
-    
+
     return (
       <View style={[styles.background, { backgroundColor: COLORS.background }]}>
         {renderWidgets()}
@@ -69,7 +71,13 @@ export const WidgetCanvas: React.FC<WidgetCanvasProps> = ({ renderWidget }) => {
   };
 
   const renderWidgets = () => (
-    <View style={styles.canvasContainer}>
+    <View
+      style={styles.canvasContainer}
+      onLayout={handleLayout}
+      // Tapping empty canvas (not a widget) clears the selection
+      onStartShouldSetResponder={() => true}
+      onResponderRelease={() => selectWidget(null)}
+    >
       {/* Sort widgets by z-index */}
       {[...widgets]
         .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
@@ -102,4 +110,3 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
 });
-

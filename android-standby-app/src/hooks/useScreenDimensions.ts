@@ -7,7 +7,7 @@ import {
   isTablet,
   isFoldable,
   isPortrait,
-} from '@utils/responsive';
+} from '../utils/responsive';
 
 /**
  * Hook to get responsive screen dimensions with updates on orientation change

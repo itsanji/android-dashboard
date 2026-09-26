@@ -147,8 +147,7 @@ export const SettingsScreen: React.FC = () => {
                             {AVAILABLE_WIDGETS.find((w) => w.type === widget.type)?.name} #{index + 1}
                           </Text>
                           <Text style={styles.widgetDescription}>
-                            {widget.position.width.toFixed(0)}x{widget.position.height.toFixed(0)} • 
-                            z-index: {widget.zIndex}
+                            {`${widget.position.width.toFixed(0)}x${widget.position.height.toFixed(0)} • z-index: ${widget.zIndex ?? 1}`}
                           </Text>
                         </View>
                       </View>

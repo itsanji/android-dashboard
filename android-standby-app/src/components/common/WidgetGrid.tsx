@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { Widget, WidgetPosition } from '../../types';
 import { useScreenDimensions } from '../../hooks/useScreenDimensions';
@@ -21,24 +21,25 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
   onWidgetsReflow,
   style,
 }) => {
-  const { width, height, screenSize } = useScreenDimensions();
-  const [previousDimensions, setPreviousDimensions] = useState({ width, height });
+  const { width, height } = useScreenDimensions();
+  const previousDimensions = useRef({ width, height });
+  // Latest props for the effect, which should only re-run on dimension changes
+  const latestRef = useRef({ widgets, onWidgetsReflow });
+  useEffect(() => {
+    latestRef.current = { widgets, onWidgetsReflow };
+  });
 
   useEffect(() => {
     // Check if dimensions changed significantly (not just minor adjustments)
-    const widthChanged = Math.abs(width - previousDimensions.width) > 50;
-    const heightChanged = Math.abs(height - previousDimensions.height) > 50;
+    const { widgets, onWidgetsReflow } = latestRef.current;
+    const prev = previousDimensions.current;
+    const widthChanged = Math.abs(width - prev.width) > 50;
+    const heightChanged = Math.abs(height - prev.height) > 50;
 
     if ((widthChanged || heightChanged) && onWidgetsReflow) {
       // Reflow widgets to new dimensions
       const widgetData = widgets.map((w) => ({ id: w.id, position: w.position }));
-      const reflowed = reflowWidgets(
-        widgetData,
-        previousDimensions.width,
-        previousDimensions.height,
-        width,
-        height
-      );
+      const reflowed = reflowWidgets(widgetData, prev.width, prev.height, width, height);
 
       // Convert to position map
       const newPositions: Record<string, WidgetPosition> = {};
@@ -47,15 +48,11 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
       });
 
       onWidgetsReflow(newPositions);
-      setPreviousDimensions({ width, height });
+      previousDimensions.current = { width, height };
     }
-  }, [width, height, screenSize]);
+  }, [width, height]);
 
-  return (
-    <View style={[styles.container, { width, height }, style]}>
-      {children}
-    </View>
-  );
+  return <View style={[styles.container, { width, height }, style]}>{children}</View>;
 };
 
 const styles = StyleSheet.create({
@@ -63,4 +60,3 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
 });
-

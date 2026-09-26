@@ -132,7 +132,7 @@ export const getOptimalWidgetSize = (
 ): { width: number; height: number } => {
   const screenSize = getScreenSize(width);
   const cols = getGridColumns(width);
-  const rows = Math.ceil(widgetCount / cols);
+  const rows = Math.max(1, Math.ceil(widgetCount / cols));
   
   const widgetWidth = width / cols;
   const widgetHeight = height / rows;

@@ -4,6 +4,11 @@ import StorageService from '../services/storage';
 import { useScreenDimensions } from '../hooks/useScreenDimensions';
 import { constrainPosition, snapWidgetToGrid } from '../utils/layout';
 
+interface CanvasSize {
+  width: number;
+  height: number;
+}
+
 interface WidgetContextType {
   widgets: Widget[];
   selectedWidgetId: string | null;
@@ -15,10 +20,26 @@ interface WidgetContextType {
   selectWidget: (id: string | null) => void;
   bringToFront: (id: string) => void;
   setBackground: (background: BackgroundConfig) => void;
+  setCanvasSize: (size: CanvasSize) => void;
   loadWidgets: () => Promise<void>;
 }
 
 const WidgetContext = createContext<WidgetContextType | undefined>(undefined);
+
+const getDefaultConfig = (type: WidgetType): Widget['config'] => {
+  switch (type) {
+    case WidgetType.CALENDAR:
+      return { maxEvents: 3, showTime: true };
+    case WidgetType.WEATHER:
+      return { showForecast: false, units: 'celsius' };
+    case WidgetType.MEDIA_CONTROLLER:
+      return { showAlbumArt: true, compactMode: false };
+    case WidgetType.CUSTOM_TEXT:
+      return { text: 'Your text here', alignment: 'center' };
+    case WidgetType.CLOCK:
+      return { format: '24h', showDate: true, clockStyle: 'digital' };
+  }
+};
 
 export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -27,52 +48,89 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     type: 'color',
     color: '#121212',
   });
-  const { width, height } = useScreenDimensions();
+  // Persisting is disabled until stored data has been loaded, otherwise the
+  // initial defaults would overwrite what is in storage.
+  const [isHydrated, setIsHydrated] = useState(false);
+  const screen = useScreenDimensions();
+  const [canvasSize, setCanvasSizeState] = useState<CanvasSize | null>(null);
 
-  // Load widgets from storage on mount
-  useEffect(() => {
-    loadWidgets();
-  }, []);
+  // Widgets are laid out inside the canvas, which is smaller than the window
+  // (safe area insets). Fall back to the window size until it is measured.
+  const width = canvasSize?.width ?? screen.width;
+  const height = canvasSize?.height ?? screen.height;
 
   const loadWidgets = useCallback(async () => {
     try {
-      const loadedWidgets = await StorageService.loadWidgets();
-      const loadedBackground = await StorageService.loadBackground();
-      
+      const [loadedWidgets, loadedBackground] = await Promise.all([
+        StorageService.loadWidgets(),
+        StorageService.loadBackground(),
+      ]);
+
       if (loadedWidgets.length > 0) {
-        // Constrain widgets to current screen bounds
-        const constrainedWidgets = loadedWidgets.map((widget) => ({
-          ...widget,
-          position: constrainPosition(widget.position, width, height),
-        }));
-        setWidgets(constrainedWidgets);
+        // Older saves may lack a config
+        setWidgets(
+          loadedWidgets.map(
+            (widget) =>
+              ({ ...widget, config: widget.config ?? getDefaultConfig(widget.type) }) as Widget
+          )
+        );
       }
-      
+
       if (loadedBackground) {
         setBackgroundState(loadedBackground);
       }
     } catch (error) {
       console.error('Error loading widgets:', error);
+    } finally {
+      setIsHydrated(true);
     }
-  }, [width, height]);
+  }, []);
 
-  // Save widgets to storage whenever they change
+  // Load widgets from storage on mount
   useEffect(() => {
-    if (widgets.length > 0) {
-      StorageService.saveWidgets(widgets).catch(console.error);
-    }
-  }, [widgets]);
+    loadWidgets();
+  }, [loadWidgets]);
+
+  // Keep widgets inside the canvas once it is measured or resized
+  useEffect(() => {
+    if (!canvasSize) return;
+    setWidgets((prev) => {
+      let changed = false;
+      const next = prev.map((widget) => {
+        const constrained = constrainPosition(widget.position, canvasSize.width, canvasSize.height);
+        const p = widget.position;
+        if (
+          constrained.x === p.x &&
+          constrained.y === p.y &&
+          constrained.width === p.width &&
+          constrained.height === p.height
+        ) {
+          return widget;
+        }
+        changed = true;
+        return { ...widget, position: constrained };
+      });
+      return changed ? next : prev;
+    });
+  }, [canvasSize, isHydrated]);
+
+  // Save widgets to storage whenever they change (including becoming empty)
+  useEffect(() => {
+    if (!isHydrated) return;
+    StorageService.saveWidgets(widgets).catch(console.error);
+  }, [widgets, isHydrated]);
 
   // Save background whenever it changes
   useEffect(() => {
+    if (!isHydrated) return;
     StorageService.saveBackground(background).catch(console.error);
-  }, [background]);
+  }, [background, isHydrated]);
 
   const addWidget = useCallback(
     (type: WidgetType, initialPosition?: Partial<WidgetPosition>) => {
-      const id = `widget_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Default position: center of screen
+      const id = `widget_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+
+      // Default position: center of canvas
       const defaultPosition: WidgetPosition = {
         x: (width - 200) / 2,
         y: (height - 200) / 2,
@@ -89,34 +147,32 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const snappedPosition = snapWidgetToGrid(position);
       const constrainedPosition = constrainPosition(snappedPosition, width, height);
 
-      // Get highest z-index
-      const maxZIndex = widgets.reduce((max, w) => Math.max(max, w.zIndex || 0), 0);
-
-      const newWidget: Widget = {
-        id,
-        type,
-        position: constrainedPosition,
-        zIndex: maxZIndex + 1,
-        style: {
-          backgroundColor: 'rgba(30, 30, 30, 0.9)',
-          textColor: '#ffffff',
-          borderRadius: 12,
-          padding: 12,
-        },
-      } as Widget;
-
-      setWidgets((prev) => [...prev, newWidget]);
+      setWidgets((prev) => {
+        const maxZIndex = prev.reduce((max, w) => Math.max(max, w.zIndex || 0), 0);
+        const newWidget = {
+          id,
+          type,
+          position: constrainedPosition,
+          zIndex: maxZIndex + 1,
+          config: getDefaultConfig(type),
+          style: {
+            backgroundColor: 'rgba(30, 30, 30, 0.9)',
+            textColor: '#ffffff',
+            borderRadius: 12,
+            padding: 12,
+          },
+        } as Widget;
+        return [...prev, newWidget];
+      });
       setSelectedWidgetId(id);
     },
-    [widgets, width, height]
+    [width, height]
   );
 
   const removeWidget = useCallback((id: string) => {
     setWidgets((prev) => prev.filter((w) => w.id !== id));
-    if (selectedWidgetId === id) {
-      setSelectedWidgetId(null);
-    }
-  }, [selectedWidgetId]);
+    setSelectedWidgetId((prev) => (prev === id ? null : prev));
+  }, []);
 
   const updateWidgetPosition = useCallback(
     (id: string, position: WidgetPosition) => {
@@ -148,7 +204,12 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const bringToFront = useCallback((id: string) => {
     setWidgets((prev) => {
+      const target = prev.find((w) => w.id === id);
+      if (!target) return prev;
       const maxZIndex = prev.reduce((max, w) => Math.max(max, w.zIndex || 0), 0);
+      const sharesTop = prev.some((w) => w.id !== id && (w.zIndex || 0) === maxZIndex);
+      // Already on top: avoid a needless state change (and storage write)
+      if ((target.zIndex || 0) === maxZIndex && !sharesTop) return prev;
       return prev.map((widget) =>
         widget.id === id ? { ...widget, zIndex: maxZIndex + 1 } : widget
       );
@@ -157,6 +218,12 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const setBackground = useCallback((newBackground: BackgroundConfig) => {
     setBackgroundState(newBackground);
+  }, []);
+
+  const setCanvasSize = useCallback((size: CanvasSize) => {
+    setCanvasSizeState((prev) =>
+      prev && prev.width === size.width && prev.height === size.height ? prev : size
+    );
   }, []);
 
   const value: WidgetContextType = {
@@ -170,6 +237,7 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     selectWidget,
     bringToFront,
     setBackground,
+    setCanvasSize,
     loadWidgets,
   };
 
@@ -183,4 +251,3 @@ export const useWidgets = (): WidgetContextType => {
   }
   return context;
 };
-

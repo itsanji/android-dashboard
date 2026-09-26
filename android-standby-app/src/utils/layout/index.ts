@@ -29,11 +29,14 @@ export const constrainPosition = (
   screenWidth: number,
   screenHeight: number
 ): WidgetPosition => {
+  // Clamp size first so the position is computed against the final size
+  const width = Math.min(position.width, screenWidth, WIDGET_CONSTRAINTS.maxWidth);
+  const height = Math.min(position.height, screenHeight, WIDGET_CONSTRAINTS.maxHeight);
   return {
-    x: Math.max(0, Math.min(position.x, screenWidth - position.width)),
-    y: Math.max(0, Math.min(position.y, screenHeight - position.height)),
-    width: Math.min(position.width, screenWidth, WIDGET_CONSTRAINTS.maxWidth),
-    height: Math.min(position.height, screenHeight, WIDGET_CONSTRAINTS.maxHeight),
+    x: Math.max(0, Math.min(position.x, screenWidth - width)),
+    y: Math.max(0, Math.min(position.y, screenHeight - height)),
+    width,
+    height,
   };
 };
 
@@ -59,15 +62,19 @@ export const calculateGridLayout = (
   columns?: number
 ): { columns: number; rows: number; cellWidth: number; cellHeight: number } => {
   // Auto-calculate columns based on screen width if not provided
-  const cols = columns || Math.floor(screenWidth / (WIDGET_CONSTRAINTS.minWidth + 16));
-  const rows = Math.ceil(widgetCount / cols);
-  
+  // Clamp to at least 1 before dividing to avoid Infinity/NaN cells
+  const cols = Math.max(
+    1,
+    columns || Math.floor(screenWidth / (WIDGET_CONSTRAINTS.minWidth + 16))
+  );
+  const rows = Math.max(1, Math.ceil(widgetCount / cols));
+
   const cellWidth = Math.floor(screenWidth / cols);
   const cellHeight = Math.floor(screenHeight / rows);
 
   return {
-    columns: Math.max(1, cols),
-    rows: Math.max(1, rows),
+    columns: cols,
+    rows,
     cellWidth,
     cellHeight,
   };
