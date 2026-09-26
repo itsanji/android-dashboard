@@ -1,10 +1,31 @@
 import React from 'react';
 import { View, StyleSheet, ImageBackground, LayoutChangeEvent } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { DraggableWidget } from './DraggableWidget';
 import { useWidgets } from '../../context/WidgetContext';
 import { COLORS } from '../../constants/theme';
 import { Widget } from '../../types';
+
+/**
+ * Muted, looping, full-bleed video background
+ */
+const BackgroundVideo: React.FC<{ uri: string }> = ({ uri }) => {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={StyleSheet.absoluteFill}
+      contentFit="cover"
+      nativeControls={false}
+      allowsPictureInPicture={false}
+    />
+  );
+};
 
 interface WidgetCanvasProps {
   renderWidget: (widget: Widget) => React.ReactNode;
@@ -38,14 +59,7 @@ export const WidgetCanvas: React.FC<WidgetCanvasProps> = ({ renderWidget }) => {
         if (background.uri) {
           return (
             <View style={styles.background}>
-              <Video
-                source={{ uri: background.uri }}
-                style={StyleSheet.absoluteFillObject}
-                resizeMode={ResizeMode.COVER}
-                shouldPlay
-                isLooping
-                isMuted
-              />
+              <BackgroundVideo uri={background.uri} />
               {renderWidgets()}
             </View>
           );

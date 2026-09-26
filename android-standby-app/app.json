@@ -28,12 +28,6 @@
         }
       ],
       [
-        "expo-av",
-        {
-          "microphonePermission": false
-        }
-      ],
-      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to access your location to show weather information.",
