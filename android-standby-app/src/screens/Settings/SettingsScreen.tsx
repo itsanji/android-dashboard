@@ -5,7 +5,6 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { Button, Card, IconButton } from '../../components/ui';
-import { useScreenDimensions } from '../../hooks/useScreenDimensions';
 import { useWidgets } from '../../context/WidgetContext';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../constants/theme';
@@ -28,7 +27,6 @@ const AVAILABLE_WIDGETS = [
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
-  const { screenSize, isTablet } = useScreenDimensions();
   const { widgets, addWidget, removeWidget } = useWidgets();
   const [activeTab, setActiveTab] = useState<'widgets' | 'added'>('widgets');
 
@@ -104,11 +102,7 @@ export const SettingsScreen: React.FC = () => {
                         <Text style={styles.widgetDescription}>{widget.description}</Text>
                       </View>
                     </View>
-                    <Button
-                      title="Add"
-                      size="small"
-                      onPress={() => handleAddWidget(widget.type)}
-                    />
+                    <Button title="Add" size="small" onPress={() => handleAddWidget(widget.type)} />
                   </View>
                 </Card>
               ))}
@@ -144,7 +138,8 @@ export const SettingsScreen: React.FC = () => {
                         </Text>
                         <View style={styles.widgetDetails}>
                           <Text style={styles.widgetName}>
-                            {AVAILABLE_WIDGETS.find((w) => w.type === widget.type)?.name} #{index + 1}
+                            {AVAILABLE_WIDGETS.find((w) => w.type === widget.type)?.name} #
+                            {index + 1}
                           </Text>
                           <Text style={styles.widgetDescription}>
                             {`${widget.position.width.toFixed(0)}x${widget.position.height.toFixed(0)} • z-index: ${widget.zIndex ?? 1}`}
@@ -316,4 +311,3 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
 });
-

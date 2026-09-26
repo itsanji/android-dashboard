@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  Modal as RNModal,
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
-  ViewStyle,
-} from 'react-native';
+import { Modal as RNModal, View, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { COLORS, SPACING } from '../../constants/theme';
 import { useScreenDimensions } from '../../hooks/useScreenDimensions';
 import { getResponsiveSpacing } from '../../utils/responsive';
@@ -31,7 +24,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   const getModalWidth = (): number => {
     if (fullScreen) return width;
-    
+
     // Responsive modal widths
     switch (screenSize) {
       case ScreenSize.XS:
@@ -53,18 +46,9 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <RNModal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          activeOpacity={1} 
-          onPress={onClose}
-        />
+        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <View
           style={[
             styles.modal,
@@ -103,4 +87,3 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 });
-

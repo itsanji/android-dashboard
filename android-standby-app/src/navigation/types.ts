@@ -8,4 +8,3 @@ export type RootStackParamList = {
 };
 
 export type ScreenNames = keyof RootStackParamList;
-

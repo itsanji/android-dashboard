@@ -36,21 +36,25 @@ A React Native dashboard application for Android that displays customizable widg
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 cd android-standby-app
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Start the development server:
+
 ```bash
 npm start
 ```
 
 4. Run on Android:
+
 ```bash
 npm run android
 ```
@@ -93,6 +97,7 @@ src/
 ## Responsive Design
 
 The app supports multiple screen sizes:
+
 - **XS** (< 360dp): Small phones, folded flip phones
 - **SM** (360-599dp): Regular phones
 - **MD** (600-839dp): Large phones, small tablets
@@ -102,6 +107,7 @@ The app supports multiple screen sizes:
 ## Permissions
 
 The app requires the following permissions:
+
 - **Calendar**: To read and display calendar events
 - **Media Library**: To access photos/videos for backgrounds
 - **Location**: To show weather information
@@ -109,6 +115,7 @@ The app requires the following permissions:
 ## Configuration
 
 Edit `app.json` to configure:
+
 - App name and package identifier
 - Permissions
 - Splash screen and icons
@@ -121,4 +128,3 @@ MIT
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-

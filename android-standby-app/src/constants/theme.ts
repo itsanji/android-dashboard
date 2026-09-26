@@ -11,7 +11,7 @@ export const COLORS = {
   onBackground: '#ffffff',
   onSurface: '#ffffff',
   onError: '#000000',
-  
+
   // Additional colors
   text: {
     primary: '#ffffff',
@@ -20,7 +20,7 @@ export const COLORS = {
   },
   divider: '#333333',
   border: '#444444',
-  
+
   // Widget colors
   widgetBackground: 'rgba(30, 30, 30, 0.9)',
   widgetBorder: 'rgba(255, 255, 255, 0.1)',
@@ -97,4 +97,3 @@ export const ANIMATION = {
 };
 
 export const TOUCH_TARGET_SIZE = 48; // Minimum touch target size in dp
-

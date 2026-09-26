@@ -87,11 +87,11 @@ export const scaleFont = (size: number, maxScale: number = 1.3): number => {
  */
 export const normalize = (size: number): number => {
   const { scale: pixelRatio } = getScreenDimensions();
-  
+
   if (Platform.OS === 'ios') {
     return Math.round(PixelRatio.roundToNearestPixel(size));
   }
-  
+
   // Android normalization based on density
   if (pixelRatio >= 3) {
     return size * 1.15;
@@ -112,7 +112,7 @@ export const getResponsiveSpacing = (baseSpacing: number, screenSize: ScreenSize
     [ScreenSize.LG]: 1.4,
     [ScreenSize.XL]: 1.6,
   };
-  
+
   return baseSpacing * multipliers[screenSize];
 };
 
@@ -121,7 +121,7 @@ export const getResponsiveSpacing = (baseSpacing: number, screenSize: ScreenSize
  */
 export const getGridColumns = (width: number): number => {
   const screenSize = getScreenSize(width);
-  
+
   const columns: Record<ScreenSize, number> = {
     [ScreenSize.XS]: 2,
     [ScreenSize.SM]: 3,
@@ -129,7 +129,7 @@ export const getGridColumns = (width: number): number => {
     [ScreenSize.LG]: 5,
     [ScreenSize.XL]: 6,
   };
-  
+
   return columns[screenSize];
 };
 
@@ -141,13 +141,12 @@ export const getOptimalWidgetSize = (
   height: number,
   widgetCount: number
 ): { width: number; height: number } => {
-  const screenSize = getScreenSize(width);
   const cols = getGridColumns(width);
   const rows = Math.max(1, Math.ceil(widgetCount / cols));
-  
+
   const widgetWidth = width / cols;
   const widgetHeight = height / rows;
-  
+
   return {
     width: Math.max(widgetWidth, 100),
     height: Math.max(widgetHeight, 100),

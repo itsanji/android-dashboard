@@ -91,4 +91,3 @@ export const getUsableScreenDimensions = (): {
     usableHeight: height - insets.top - insets.bottom,
   };
 };
-
