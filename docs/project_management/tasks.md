@@ -199,21 +199,21 @@
 ---
 
 ## 6. Data Persistence
-### 6.1 Storage Setup
-- [ ] Choose storage solution (AsyncStorage, Expo SecureStore, or MMKV)
-- [ ] Create storage service/utility functions
-- [ ] Define data schemas for widgets and settings (include screen size context)
+### 6.1 Storage Setup ✅
+- [x] Choose storage solution (AsyncStorage, Expo SecureStore, or MMKV) (AsyncStorage)
+- [x] Create storage service/utility functions (`src/services/storage`)
+- [x] Define data schemas for widgets and settings (include screen size context) (`Widget.layouts` per screen layout)
 
 ### 6.2 Widget Configuration Persistence
-- [ ] Implement save widget configurations (positions, sizes, styles)
-- [ ] Implement load widget configurations on app start
-- [ ] Handle migration for data structure changes
-- [ ] Implement widget order persistence
-- [ ] Save layout configurations per device state (folded/unfolded for foldables)
-- [ ] Handle widget position scaling when loading on different screen sizes
+- [x] Implement save widget configurations (positions, sizes, styles)
+- [x] Implement load widget configurations on app start
+- [ ] Handle migration for data structure changes (partial: missing `config` is backfilled on load; no schema versioning yet)
+- [x] Implement widget order persistence (z-index)
+- [x] Save layout configurations per device state (folded/unfolded for foldables) (fold mode + orientation, see `getLayoutKey`)
+- [x] Handle widget position scaling when loading on different screen sizes (`scalePosition`, keeps aspect ratio and relative center)
 
 ### 6.3 Background & Settings Persistence
-- [ ] Save/load background image/video selection
+- [x] Save/load background image/video selection (persistence only; picker UI is 5.4)
 - [ ] Save/load general app settings
 - [ ] Implement data backup/restore (optional)
 
@@ -237,15 +237,15 @@
 
 ## 8. Permissions & Access Management
 ### 8.1 Permission Handling
-- [ ] Create permission request utility
+- [x] Create permission request utility (`src/utils/permissions`)
 - [ ] Implement calendar permission flow
 - [ ] Implement location permission flow (for weather)
-- [ ] Implement media access permission flow
+- [x] Implement media access permission flow (notification access, prompted from the media widget)
 - [ ] Implement storage permission flow (for backgrounds)
 - [ ] Handle permission denial gracefully with user messaging
 
 ### 8.2 Shizuku Integration (Optional)
-- [ ] Research Shizuku API requirements
+- [x] Research Shizuku API requirements (not needed so far: media control works through notification access without root/Shizuku)
 - [ ] Implement Shizuku connection
 - [ ] Use Shizuku for advanced features (if needed)
 - [ ] Add fallback for non-Shizuku scenarios
@@ -272,7 +272,7 @@
 
 ## 10. Testing & Quality Assurance
 ### 10.1 Unit Testing
-- [ ] Set up testing framework (Jest)
+- [ ] Set up testing framework (Jest) — no automated tests yet; `npm run type-check` and `npm run lint` are the current checks
 - [ ] Write tests for utility functions (including responsive utilities)
 - [ ] Write tests for widget components
 - [ ] Write tests for data persistence
@@ -300,7 +300,7 @@
 ### 11.1 Code Documentation
 - [ ] Add inline code comments
 - [ ] Document component props and interfaces
-- [ ] Create README with setup instructions
+- [x] Create README with setup instructions
 - [ ] Document architecture decisions
 - [ ] Document responsive design system and breakpoints
 - [ ] Create guide for adding new widgets with responsive support
@@ -363,9 +363,12 @@
 - **xl** (extra large): ≥ 1280dp width (large tablets)
 
 ## Current Status
-- **Project Phase**: Not Started
-- **Total Tasks**: 170+
-- **Completed**: 0
-- **In Progress**: 0
-- **Blocked**: 0
+_Last updated: 2026-09-27_
 
+- **Project Phase**: Dashboard core and media widget done; next are the remaining widgets and Settings management
+- **Total Tasks**: 228
+- **Completed**: 83
+- **Remaining**: 145
+- **Next up**: Clock (4.7) and Custom Text (4.6) widgets (no permissions needed), then Settings widget editor (5.3) and background picker (5.4)
+- **Build**: The app contains custom native code (`modules/media-session`), so it runs as an Expo development build (`npm run android`), not in Expo Go
+- **Needs device testing**: media widget, per-screen layouts on fold/unfold and rotation, video background
