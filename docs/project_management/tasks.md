@@ -128,15 +128,15 @@
 - [ ] Handle loading and error states
 - [ ] Scale weather icons appropriately for screen size
 
-### 4.5 Media Controller Widget
-- [ ] Create responsive Media Controller widget component
-- [ ] Integrate with device media controls
-- [ ] Display currently playing media info (title, artist, album art)
-- [ ] Implement play/pause/next/previous controls with touch-friendly sizes
-- [ ] Implement mini and full layouts based on widget size
-- [ ] Handle album art scaling for different widget sizes
-- [ ] Handle no media playing state
-- [ ] Ensure control buttons meet minimum touch target size (48dp)
+### 4.5 Media Controller Widget ✅
+- [x] Create responsive Media Controller widget component
+- [x] Integrate with device media controls (local Expo module `modules/media-session`, MediaSessionManager + notification access)
+- [x] Display currently playing media info (title, artist, album art)
+- [x] Implement play/pause/next/previous controls with touch-friendly sizes
+- [x] Implement mini and full layouts based on widget size
+- [x] Handle album art scaling for different widget sizes
+- [x] Handle no media playing state
+- [x] Ensure control buttons meet minimum touch target size (48dp)
 
 ### 4.6 Custom Text Widget
 - [ ] Create responsive Custom Text widget component
