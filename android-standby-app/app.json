@@ -35,6 +35,14 @@
           "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to access your location to show weather information.",
           "isAndroidBackgroundLocationEnabled": false
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos for background customization.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ]
     ],
     "ios": {
