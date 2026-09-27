@@ -47,6 +47,17 @@ export const isFoldable = (width: number, height: number): boolean => {
   return aspectRatio > 2.5 || (width > 700 && height > 700);
 };
 
+export type FoldMode = 'folded' | 'unfolded' | 'normal';
+
+/**
+ * Estimate the fold state of a foldable from its dimensions
+ * (Z Flip folded: < 300dp wide, Z Fold folded: < 400dp, Z Fold unfolded: > 700dp)
+ */
+export const getFoldMode = (width: number, height: number): FoldMode => {
+  if (!isFoldable(width, height)) return 'normal';
+  return Math.min(width, height) < 400 ? 'folded' : 'unfolded';
+};
+
 /**
  * Check if screen is in portrait orientation
  */
@@ -76,11 +87,11 @@ export const scaleFont = (size: number, maxScale: number = 1.3): number => {
  */
 export const normalize = (size: number): number => {
   const { scale: pixelRatio } = getScreenDimensions();
-  
+
   if (Platform.OS === 'ios') {
     return Math.round(PixelRatio.roundToNearestPixel(size));
   }
-  
+
   // Android normalization based on density
   if (pixelRatio >= 3) {
     return size * 1.15;
@@ -101,7 +112,7 @@ export const getResponsiveSpacing = (baseSpacing: number, screenSize: ScreenSize
     [ScreenSize.LG]: 1.4,
     [ScreenSize.XL]: 1.6,
   };
-  
+
   return baseSpacing * multipliers[screenSize];
 };
 
@@ -110,7 +121,7 @@ export const getResponsiveSpacing = (baseSpacing: number, screenSize: ScreenSize
  */
 export const getGridColumns = (width: number): number => {
   const screenSize = getScreenSize(width);
-  
+
   const columns: Record<ScreenSize, number> = {
     [ScreenSize.XS]: 2,
     [ScreenSize.SM]: 3,
@@ -118,7 +129,7 @@ export const getGridColumns = (width: number): number => {
     [ScreenSize.LG]: 5,
     [ScreenSize.XL]: 6,
   };
-  
+
   return columns[screenSize];
 };
 
@@ -130,13 +141,12 @@ export const getOptimalWidgetSize = (
   height: number,
   widgetCount: number
 ): { width: number; height: number } => {
-  const screenSize = getScreenSize(width);
   const cols = getGridColumns(width);
-  const rows = Math.ceil(widgetCount / cols);
-  
+  const rows = Math.max(1, Math.ceil(widgetCount / cols));
+
   const widgetWidth = width / cols;
   const widgetHeight = height / rows;
-  
+
   return {
     width: Math.max(widgetWidth, 100),
     height: Math.max(widgetHeight, 100),

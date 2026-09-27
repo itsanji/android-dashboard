@@ -34,11 +34,7 @@ export const DashboardScreen: React.FC = () => {
       <View style={styles.container}>
         {/* Floating Settings Button */}
         <View style={styles.floatingButton}>
-          <IconButton
-            onPress={handleSettingsPress}
-            size={56}
-            backgroundColor={COLORS.primary}
-          >
+          <IconButton onPress={handleSettingsPress} size={56} backgroundColor={COLORS.primary}>
             <Text style={styles.settingsIcon}>⚙️</Text>
           </IconButton>
         </View>
@@ -111,4 +107,3 @@ const styles = StyleSheet.create({
     maxWidth: 300,
   },
 });
-

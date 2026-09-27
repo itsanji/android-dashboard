@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Dimensions, ScaledSize } from 'react-native';
-import { ScreenDimensions, ScreenSize } from '../types';
+import { ScreenDimensions } from '../types';
 import {
   getScreenDimensions,
   getScreenSize,
   isTablet,
   isFoldable,
   isPortrait,
-} from '@utils/responsive';
+} from '../utils/responsive';
 
 /**
  * Hook to get responsive screen dimensions with updates on orientation change
@@ -31,7 +31,7 @@ export const useScreenDimensions = (): ScreenDimensions => {
     const updateDimensions = ({ window }: { window: ScaledSize }) => {
       const { width, height } = window;
       const { scale, fontScale } = getScreenDimensions();
-      
+
       setDimensions({
         width,
         height,
@@ -53,4 +53,3 @@ export const useScreenDimensions = (): ScreenDimensions => {
 
   return dimensions;
 };
-

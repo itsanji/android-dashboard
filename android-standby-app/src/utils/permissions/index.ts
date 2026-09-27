@@ -15,11 +15,11 @@ export interface PermissionStatus {
 export const requestCalendarPermissions = async (): Promise<PermissionStatus> => {
   try {
     const { status, canAskAgain } = await Calendar.requestCalendarPermissionsAsync();
-    
+
     if (status !== 'granted') {
       Alert.alert('Permission Required', PERMISSION_MESSAGES.CALENDAR);
     }
-    
+
     return {
       granted: status === 'granted',
       canAskAgain,
@@ -36,11 +36,11 @@ export const requestCalendarPermissions = async (): Promise<PermissionStatus> =>
 export const requestMediaPermissions = async (): Promise<PermissionStatus> => {
   try {
     const { status, canAskAgain } = await MediaLibrary.requestPermissionsAsync();
-    
+
     if (status !== 'granted') {
       Alert.alert('Permission Required', PERMISSION_MESSAGES.MEDIA);
     }
-    
+
     return {
       granted: status === 'granted',
       canAskAgain,
@@ -57,11 +57,11 @@ export const requestMediaPermissions = async (): Promise<PermissionStatus> => {
 export const requestLocationPermissions = async (): Promise<PermissionStatus> => {
   try {
     const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
-    
+
     if (status !== 'granted') {
       Alert.alert('Permission Required', PERMISSION_MESSAGES.LOCATION);
     }
-    
+
     return {
       granted: status === 'granted',
       canAskAgain,
@@ -131,4 +131,3 @@ export const requestAllPermissions = async (): Promise<{
     location: location.granted,
   };
 };
-

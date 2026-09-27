@@ -12,4 +12,3 @@ export const PERMISSION_MESSAGES = {
   MEDIA: 'We need access to your media to allow background customization.',
   LOCATION: 'We need access to your location to show weather information.',
 };
-

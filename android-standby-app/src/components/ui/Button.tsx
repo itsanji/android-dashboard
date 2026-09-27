@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  ActivityIndicator,
-} from 'react-native';
+import { TouchableOpacity, Text, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
 import { COLORS, SPACING, TYPOGRAPHY, TOUCH_TARGET_SIZE } from '../../constants/theme';
 import { useScreenDimensions } from '../../hooks/useScreenDimensions';
 import { getResponsiveSpacing } from '../../utils/responsive';
@@ -116,6 +109,3 @@ export const Button: React.FC<ButtonProps> = ({
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({});
-

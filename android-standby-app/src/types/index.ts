@@ -18,7 +18,18 @@ export interface WidgetStyle {
   backgroundColor?: string;
   textColor?: string;
   fontSize?: number;
-  fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900';
+  fontWeight?:
+    | 'normal'
+    | 'bold'
+    | '100'
+    | '200'
+    | '300'
+    | '400'
+    | '500'
+    | '600'
+    | '700'
+    | '800'
+    | '900';
   borderRadius?: number;
   padding?: number;
   opacity?: number;
@@ -27,7 +38,10 @@ export interface WidgetStyle {
 export interface BaseWidget {
   id: string;
   type: WidgetType;
+  /** Position in the currently active layout */
   position: WidgetPosition;
+  /** Saved position per screen configuration (see getLayoutKey), e.g. folded vs unfolded */
+  layouts?: Record<string, WidgetPosition>;
   style?: WidgetStyle;
   zIndex?: number;
 }
@@ -113,4 +127,3 @@ export interface ScreenDimensions {
   isTablet: boolean;
   isFoldable: boolean;
 }
-

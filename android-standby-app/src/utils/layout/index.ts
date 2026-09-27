@@ -1,10 +1,14 @@
 import { WidgetPosition } from '../../types';
 import { WIDGET_CONSTRAINTS } from '../../constants/theme';
+import { getFoldMode } from '../responsive';
 
 /**
  * Snap position to grid
  */
-export const snapToGrid = (value: number, gridSize: number = WIDGET_CONSTRAINTS.gridSize): number => {
+export const snapToGrid = (
+  value: number,
+  gridSize: number = WIDGET_CONSTRAINTS.gridSize
+): number => {
   return Math.round(value / gridSize) * gridSize;
 };
 
@@ -29,11 +33,14 @@ export const constrainPosition = (
   screenWidth: number,
   screenHeight: number
 ): WidgetPosition => {
+  // Clamp size first so the position is computed against the final size
+  const width = Math.min(position.width, screenWidth, WIDGET_CONSTRAINTS.maxWidth);
+  const height = Math.min(position.height, screenHeight, WIDGET_CONSTRAINTS.maxHeight);
   return {
-    x: Math.max(0, Math.min(position.x, screenWidth - position.width)),
-    y: Math.max(0, Math.min(position.y, screenHeight - position.height)),
-    width: Math.min(position.width, screenWidth, WIDGET_CONSTRAINTS.maxWidth),
-    height: Math.min(position.height, screenHeight, WIDGET_CONSTRAINTS.maxHeight),
+    x: Math.max(0, Math.min(position.x, screenWidth - width)),
+    y: Math.max(0, Math.min(position.y, screenHeight - height)),
+    width,
+    height,
   };
 };
 
@@ -59,18 +66,53 @@ export const calculateGridLayout = (
   columns?: number
 ): { columns: number; rows: number; cellWidth: number; cellHeight: number } => {
   // Auto-calculate columns based on screen width if not provided
-  const cols = columns || Math.floor(screenWidth / (WIDGET_CONSTRAINTS.minWidth + 16));
-  const rows = Math.ceil(widgetCount / cols);
-  
+  // Clamp to at least 1 before dividing to avoid Infinity/NaN cells
+  const cols = Math.max(1, columns || Math.floor(screenWidth / (WIDGET_CONSTRAINTS.minWidth + 16)));
+  const rows = Math.max(1, Math.ceil(widgetCount / cols));
+
   const cellWidth = Math.floor(screenWidth / cols);
   const cellHeight = Math.floor(screenHeight / rows);
 
   return {
-    columns: Math.max(1, cols),
-    rows: Math.max(1, rows),
+    columns: cols,
+    rows,
     cellWidth,
     cellHeight,
   };
+};
+
+/**
+ * Identifies a distinct screen configuration (fold state + orientation).
+ * Widgets keep a separate position for each one.
+ */
+export const getLayoutKey = (width: number, height: number): string =>
+  `${getFoldMode(width, height)}-${width > height ? 'landscape' : 'portrait'}`;
+
+/**
+ * Map a widget position from one canvas size to another. The widget keeps its
+ * aspect ratio and its center stays at the same relative spot on the canvas.
+ */
+export const scalePosition = (
+  position: WidgetPosition,
+  from: { width: number; height: number },
+  to: { width: number; height: number }
+): WidgetPosition => {
+  const scaleX = to.width / from.width;
+  const scaleY = to.height / from.height;
+  const sizeScale = Math.min(scaleX, scaleY);
+
+  const width = position.width * sizeScale;
+  const height = position.height * sizeScale;
+  const centerX = (position.x + position.width / 2) * scaleX;
+  const centerY = (position.y + position.height / 2) * scaleY;
+
+  const snapped = snapWidgetToGrid({
+    x: centerX - width / 2,
+    y: centerY - height / 2,
+    width,
+    height,
+  });
+  return constrainPosition(snapped, to.width, to.height);
 };
 
 /**
@@ -82,26 +124,15 @@ export const reflowWidgets = (
   oldHeight: number,
   newWidth: number,
   newHeight: number
-): Array<{ id: string; position: WidgetPosition }> => {
-  const scaleX = newWidth / oldWidth;
-  const scaleY = newHeight / oldHeight;
-
-  return widgets.map((widget) => {
-    const newPosition: WidgetPosition = {
-      x: widget.position.x * scaleX,
-      y: widget.position.y * scaleY,
-      width: widget.position.width * scaleX,
-      height: widget.position.height * scaleY,
-    };
-
-    // Snap to grid and constrain within bounds
-    const snapped = snapWidgetToGrid(newPosition);
-    return {
-      ...widget,
-      position: constrainPosition(snapped, newWidth, newHeight),
-    };
-  });
-};
+): Array<{ id: string; position: WidgetPosition }> =>
+  widgets.map((widget) => ({
+    ...widget,
+    position: scalePosition(
+      widget.position,
+      { width: oldWidth, height: oldHeight },
+      { width: newWidth, height: newHeight }
+    ),
+  }));
 
 /**
  * Auto-arrange widgets in a grid
@@ -128,4 +159,3 @@ export const autoArrangeWidgets = (
 
   return positions;
 };
-
