@@ -6,11 +6,11 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { IconButton } from '../../components/ui';
 import { WidgetCanvas } from '../../components/common/WidgetCanvas';
-import { PlaceholderWidget } from '../../components/widgets';
+import { MediaControllerWidget, PlaceholderWidget } from '../../components/widgets';
 import { useWidgets } from '../../context/WidgetContext';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../constants/theme';
-import { Widget } from '../../types';
+import { Widget, WidgetType } from '../../types';
 
 type DashboardScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Dashboard'>;
 
@@ -23,9 +23,13 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const renderWidget = (widget: Widget) => {
-    // For now, render placeholder for all widgets
-    // Will be replaced with actual widget implementations
-    return <PlaceholderWidget widget={widget} />;
+    switch (widget.type) {
+      case WidgetType.MEDIA_CONTROLLER:
+        return <MediaControllerWidget widget={widget} />;
+      default:
+        // Remaining widget types are not implemented yet
+        return <PlaceholderWidget widget={widget} />;
+    }
   };
 
   return (

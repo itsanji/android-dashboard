@@ -1,107 +1,84 @@
-# 🚀 Quick Start - Run the Demo
+# 🚀 Quick Start
 
-## Option 1: Run on Your Samsung Galaxy Z Fold 7 (Recommended)
+_Last updated: 2026-09-27_
 
-### Step 1: Start the development server
+The app includes custom native code (the media controller module), so it runs
+as an **Expo development build**. Expo Go can no longer run it.
+
+## Prerequisites
+
+- Node.js 20+
+- Android Studio with the Android SDK, and JDK 17+ (`ANDROID_HOME` set)
+- A phone with USB debugging enabled (e.g. Galaxy Z Fold 7), or an emulator
+
+## Build and run
+
 ```bash
-cd /home/anji/data/project/self/android_standby_mode/android-standby-app
-npm start
+cd android-standby-app
+npm install
+npm run android          # builds, installs and launches the dev build
+# or pick a connected phone explicitly:
+npm run android:device
 ```
 
-### Step 2: Run on your device
+The first build takes a few minutes. After that:
 
-**If device is connected via USB:**
-```bash
-npm run android
-```
+| You changed                                                           | What to do                                                                                         |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| JS/TS code (`src/`, `modules/*/index.ts`)                             | Nothing, fast refresh reloads it. If Metro isn't running: `npm start`, then open the installed app |
+| Kotlin (`modules/*/android`), `app.json` plugins, native dependencies | `npm run android` again                                                                            |
+| Native project out of sync                                            | `npx expo prebuild -p android --clean`, then `npm run android`                                     |
 
-**Or scan the QR code** with Expo Go app (install from Play Store if needed)
+`android/` is generated and not committed.
 
----
+## 📱 What to try
 
-## Option 2: Using Android Studio Emulator
+1. **Add widgets**: tap ⚙️ → _Available Widgets_ → _Add_.
+2. **Move and resize**: drag a widget, tap it to select, drag the round
+   handle to resize. Tap it again or tap empty space to deselect.
+3. **Media widget**: add _Media_, tap **Allow access**, enable
+   _Android Standby Mode_, come back, then play something in Spotify /
+   YouTube Music.
+4. **Fold / rotate**: arrange widgets, fold or rotate, arrange differently,
+   then go back. Each screen setup keeps its own layout.
+5. **Persistence**: close and reopen the app. Widgets (including deletions)
+   and the background stay as you left them.
 
-1. Start the emulator from Android Studio
-2. Run:
-```bash
-npm run android
-```
-
----
-
-## 📱 What You'll See
-
-A demo screen showcasing:
-- ✅ Real-time screen dimensions
-- ✅ **Fold state detection** (FOLDED/UNFOLDED) - perfect for your Z Fold 7!
-- ✅ Responsive buttons (3 sizes, 3 variants)
-- ✅ Icon buttons
-- ✅ Responsive modal
-- ✅ Auto-adjusting grid system
-- ✅ Device type detection
-
-## 🧪 Testing on Z Fold 7
-
-### Try These:
-1. **Start unfolded** - See it detect wide screen (~880dp)
-2. **Fold the device** - Watch it instantly switch to narrow mode (~370dp)
-3. **Open the modal** - See how it adapts to screen width
-4. **Rotate the device** - Test portrait and landscape
-5. **Check the grid** - Columns adjust automatically (2-6 columns)
-
----
-
-## 🎯 Expected Behavior
-
-### Unfolded State:
-- Width: ~880dp
-- Screen Size: LG
-- Fold State: "UNFOLDED"
-- Grid: 5 columns
-- Modal: Max 600dp width
-
-### Folded State:
-- Width: ~370dp
-- Screen Size: SM
-- Fold State: "FOLDED"
-- Grid: 3 columns
-- Modal: 90% width
-
----
+Calendar, weather, text and clock widgets still show placeholders.
 
 ## 🐛 Troubleshooting
 
-**Issue:** App won't start
+**Notification access toggle is greyed out ("Restricted setting")**
+Android 13+ restricts this for apps not installed from the Play Store:
+_Settings → Apps → Android Standby Mode → ⋮ → Allow restricted settings_.
+
+**Media widget says it needs a development build**
+You opened the project in Expo Go. Install the dev build with `npm run android`.
+
+**Metro / cache errors**
+
 ```bash
-# Clear cache and restart
 npm start -- --clear
 ```
 
-**Issue:** Device not detected
+**Device not detected**
+
 ```bash
-# Check device connection
 adb devices
-
-# Restart adb if needed
-adb kill-server
-adb start-server
+adb kill-server && adb start-server
 ```
 
-**Issue:** Metro bundler errors
+**Native build fails after pulling changes**
+
 ```bash
-# Reinstall dependencies
-rm -rf node_modules
-npm install
-npm start
+rm -rf node_modules && npm install
+npx expo prebuild -p android --clean
+npm run android
 ```
 
----
+## ✅ Checks before committing
 
-## 📖 More Details
-
-See `DEMO_GUIDE.md` for detailed testing instructions and what to look for.
-
----
-
-**Ready to test?** Run `npm start` and enjoy! 🎉
-
+```bash
+npm run type-check
+npm run lint
+```
